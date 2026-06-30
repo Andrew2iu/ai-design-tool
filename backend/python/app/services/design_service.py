@@ -6,7 +6,126 @@ import re
 from openai import OpenAI
 from app.core.config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL
 
-client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
+_client = None
+
+def _get_client() -> OpenAI:
+    global _client
+    if _client is None:
+        _client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
+    return _client
+
+
+# ── 颜色距离计算（RGB 欧几里得距离） ──
+
+def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
+    """#RRGGBB → (R, G, B)"""
+    c = hex_color.lstrip("#")
+    if len(c) == 3:
+        c = c[0] * 2 + c[1] * 2 + c[2] * 2
+    return int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16)
+
+
+def _color_distance(c1: str, c2: str) -> float:
+    """两个 hex 颜色的 RGB 欧几里得距离"""
+    r1, g1, b1 = _hex_to_rgb(c1)
+    r2, g2, b2 = _hex_to_rgb(c2)
+    return ((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2) ** 0.5
+
+
+def _find_nearest_brand_color(color: str, brand_palette: list[str]) -> str:
+    """找到最接近的品牌色"""
+    closest = brand_palette[0]
+    min_dist = _color_distance(color, closest)
+    for bc in brand_palette[1:]:
+        dist = _color_distance(color, bc)
+        if dist < min_dist:
+            min_dist = dist
+            closest = bc
+    return closest
+
+
+# ── 品牌色自动修正 ──
+
+def auto_fix_colors(design: dict, design_system_id: str | None = None) -> tuple[dict, list[dict]]:
+    """自动将设计稿中的非品牌色替换为最近品牌色
+
+    Returns:
+        (fixed_design, fix_log) - 修正后的设计稿 + 修复日志列表
+    """
+    ds = get_design_system(design_system_id)
+
+    # 收集品牌色板（hex 值）
+    brand_palette = []
+    for k, v in ds["colors"].items():
+        if isinstance(v, str) and v.startswith("#"):
+            brand_palette.append(v)
+
+    if not brand_palette:
+        return design, []
+
+    brand_lower = {c.lower() for c in brand_palette}
+    elements = design.get("elements", [])
+    fix_log = []
+    fixed_elements = []
+
+    for el in elements:
+        el = dict(el)  # shallow copy
+        el_fixed = False
+
+        # 修正 fill 颜色
+        fill = el.get("fill", "")
+        if isinstance(fill, str) and fill.startswith("#") and fill.lower() not in brand_lower:
+            old_fill = fill
+            new_fill = _find_nearest_brand_color(fill.lower(), [b.lower() for b in brand_palette])
+            el["fill"] = new_fill
+            el_fixed = True
+            fix_log.append({
+                "elementId": el.get("id", "?"),
+                "elementType": el.get("type", "?"),
+                "field": "fill",
+                "from": old_fill,
+                "to": new_fill,
+            })
+
+        # 修正 stroke 颜色
+        stroke = el.get("stroke", "")
+        if isinstance(stroke, str) and stroke.startswith("#") and stroke.lower() not in brand_lower:
+            old_stroke = stroke
+            new_stroke = _find_nearest_brand_color(stroke.lower(), [b.lower() for b in brand_palette])
+            el["stroke"] = new_stroke
+            el_fixed = True
+            fix_log.append({
+                "elementId": el.get("id", "?"),
+                "elementType": el.get("type", "?"),
+                "field": "stroke",
+                "from": old_stroke,
+                "to": new_stroke,
+            })
+
+        # 修正 text fill 颜色
+        text_fill = el.get("fill", "")
+        if el.get("type") == "text" and isinstance(text_fill, str) and text_fill.startswith("#"):
+            if text_fill.lower() not in brand_lower and text_fill.lower() not in {"#ffffff", "#000000", "#1a1a2e", "#333333"}:
+                old = text_fill
+                new = _find_nearest_brand_color(text_fill.lower(), [b.lower() for b in brand_palette])
+                el["fill"] = new
+                el_fixed = True
+                fix_log.append({
+                    "elementId": el.get("id", "?"),
+                    "elementType": el.get("type", "?"),
+                    "field": "textFill",
+                    "from": old,
+                    "to": new,
+                })
+
+        fixed_elements.append(el)
+
+    design["elements"] = fixed_elements
+
+    if fix_log:
+        print(f"[Design] Auto-fixed {len(fix_log)} color(s) for design system compliance")
+
+    return design, fix_log
 
 # 内置设计系统
 BUILTIN_DESIGN_SYSTEMS = {
@@ -161,7 +280,7 @@ def check_design_compliance(design: dict, design_system_id: str | None = None) -
 
 def _ai_semantic_check(design: dict, design_system: dict) -> dict:
     """使用 AI 进行语义层面的设计规范检查"""
-    response = client.chat.completions.create(
+    response = _get_client().chat.completions.create(
         model=DEEPSEEK_MODEL,
         messages=[
             {

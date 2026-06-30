@@ -1,75 +1,198 @@
-import { Palette, Eye, EyeOff, Settings2, Layers, SwatchBook, Bot } from 'lucide-react'
+import { Palette, Eye, EyeOff, Layers, Code, ShieldCheck, Database, Cpu, Sparkles, LayoutGrid } from 'lucide-react'
 import { useAppStore } from '../../stores/appStore'
 import CollaborationIndicator from '../collaboration/CollaborationIndicator'
-import clsx from 'clsx'
+
+interface TabItem {
+  key: 'chat' | 'code' | 'compliance' | 'design-system' | 'mcp'
+  label: string
+  icon: React.ReactNode
+  color: string
+}
+
+const tabs: TabItem[] = [
+  { key: 'chat', label: 'AI 助手', icon: <Sparkles size={14} />, color: 'var(--color-brand)' },
+  { key: 'code', label: '代码生成', icon: <Code size={14} />, color: '#4f46e5' },
+  { key: 'compliance', label: '规范检查', icon: <ShieldCheck size={14} />, color: 'var(--color-accent)' },
+  { key: 'design-system', label: '设计系统', icon: <Database size={14} />, color: '#0d9488' },
+  { key: 'mcp', label: 'MCP', icon: <Cpu size={14} />, color: '#7c3aed' },
+]
 
 export default function Toolbar() {
-  const { canvasMode, setCanvasMode, currentDesign, showRightPanel, toggleRightPanel, activePanel, setActivePanel } =
-    useAppStore()
+  const {
+    canvasMode,
+    setCanvasMode,
+    currentDesign,
+    showRightPanel,
+    toggleRightPanel,
+    activePanel,
+    setActivePanel,
+    designAlternatives,
+    switchToVariant,
+  } = useAppStore()
+
+  const totalVariants = designAlternatives.length + (currentDesign ? 1 : 0)
+
+  const handleTabClick = (panel: typeof activePanel) => {
+    // 如果已选中且面板已打开 → 关闭面板
+    if (activePanel === panel && showRightPanel) {
+      toggleRightPanel()
+    } else {
+      setActivePanel(panel)
+    }
+  }
 
   return (
-    <header className="h-12 bg-white border-b border-gray-200 flex items-center justify-between px-4 flex-shrink-0">
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <Palette size={18} className="text-brand-600" />
-          <span className="text-sm font-medium text-gray-800">AI Design Studio</span>
+    <header
+      className="h-14 flex items-center justify-between px-5 flex-shrink-0"
+      style={{
+        background: 'var(--color-bg-elevated)',
+        borderBottom: '1px solid var(--color-border)',
+        boxShadow: 'var(--shadow-sm)',
+      }}
+    >
+      {/* ========== 左：品牌区域 ========== */}
+      <div className="flex items-center gap-4">
+        {/* Logo */}
+        <div className="flex items-center gap-2.5">
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, var(--color-brand) 0%, #3b4fd4 100%)',
+              color: '#fff',
+              boxShadow: 'var(--shadow-brand)',
+            }}
+          >
+            <Palette size={16} />
+          </div>
+          <div className="flex flex-col leading-none">
+            <span className="text-sm font-bold" style={{ color: 'var(--color-brand)' }}>
+              AI Design
+            </span>
+            <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+              Studio 2026
+            </span>
+          </div>
         </div>
-        <span className="text-xs text-gray-300">|</span>
-        <span className="text-xs text-gray-400">面向2026的AI原生产品设计工具</span>
-        <CollaborationIndicator />
-      </div>
 
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
+        <div className="w-px h-6" style={{ background: 'var(--color-border)' }} />
+
+        {/* 设计 / 预览切换 */}
+        <div
+          className="flex items-center rounded-lg p-0.5"
+          style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}
+        >
           <button
             onClick={() => setCanvasMode('design')}
-            className={clsx(
-              'px-3 py-1.5 text-xs rounded-md flex items-center gap-1.5 transition-all',
-              canvasMode === 'design' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            )}
+            className="px-3.5 py-1.5 text-xs rounded-md flex items-center gap-1.5 transition-all font-medium"
+            style={
+              canvasMode === 'design'
+                ? {
+                    background: 'var(--color-brand)',
+                    color: '#fff',
+                    boxShadow: 'var(--shadow-brand)',
+                  }
+                : { color: 'var(--color-text-secondary)' }
+            }
           >
-            <Layers size={14} />
+            <Layers size={13} />
             设计
           </button>
           <button
             onClick={() => setCanvasMode('preview')}
-            className={clsx(
-              'px-3 py-1.5 text-xs rounded-md flex items-center gap-1.5 transition-all',
-              canvasMode === 'preview' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            )}
             disabled={!currentDesign}
+            className="px-3.5 py-1.5 text-xs rounded-md flex items-center gap-1.5 transition-all font-medium disabled:opacity-35 disabled:cursor-not-allowed"
+            style={
+              canvasMode === 'preview'
+                ? {
+                    background: 'var(--color-brand)',
+                    color: '#fff',
+                    boxShadow: 'var(--shadow-brand)',
+                  }
+                : { color: 'var(--color-text-secondary)' }
+            }
           >
-            <Eye size={14} />
+            <Eye size={13} />
             预览
           </button>
         </div>
 
-        <span className="text-xs text-gray-300">|</span>
+        {/* 方案变体切换器 */}
+        {totalVariants > 1 && (
+          <div className="flex items-center gap-1.5">
+            <LayoutGrid size={13} style={{ color: 'var(--color-text-muted)' }} />
+            {Array.from({ length: totalVariants }).map((_, i) => {
+              const isActive = i === 0
+              return (
+                <button
+                  key={i}
+                  onClick={() => switchToVariant(i)}
+                  className="text-xs px-2.5 py-1 rounded-md transition-all font-medium"
+                  style={{
+                    background: isActive ? 'var(--color-brand)' : 'var(--color-bg)',
+                    color: isActive ? '#fff' : 'var(--color-text-secondary)',
+                    border: isActive ? 'none' : '1px solid var(--color-border-light)',
+                  }}
+                >
+                  方案{i + 1}
+                </button>
+              )
+            })}
+          </div>
+        )}
 
-        <div className="flex items-center gap-1">
-          {(['chat', 'code', 'compliance', 'design-system', 'mcp'] as const).map((panel) => (
+        <CollaborationIndicator />
+      </div>
+
+      {/* ========== 中：面板标签导航 ========== */}
+      <div className="flex items-center gap-1">
+        {tabs.map((tab) => {
+          const isActive = activePanel === tab.key && showRightPanel
+          return (
             <button
-              key={panel}
-              onClick={() => setActivePanel(panel)}
-              className={clsx(
-                'px-2.5 py-1.5 text-xs rounded-md transition-all',
-                activePanel === panel && showRightPanel
-                  ? 'bg-brand-50 text-brand-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              )}
+              key={tab.key}
+              onClick={() => handleTabClick(tab.key)}
+              className="relative flex items-center gap-1.5 px-3.5 py-1.5 text-xs rounded-lg transition-all font-medium"
+              style={{
+                color: isActive ? tab.color : 'var(--color-text-secondary)',
+                background: isActive ? `${tab.color}10` : 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.background = `${tab.color}08`
+                  e.currentTarget.style.color = tab.color
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = 'var(--color-text-secondary)'
+                }
+              }}
             >
-              {panel === 'chat' && 'AI 助手'}
-              {panel === 'code' && '代码'}
-              {panel === 'compliance' && '规范检查'}
-              {panel === 'design-system' && '设计系统'}
-              {panel === 'mcp' && 'MCP'}
+              {tab.icon}
+              <span>{tab.label}</span>
+              {isActive && (
+                <span
+                  className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full"
+                  style={{ background: tab.color }}
+                />
+              )}
             </button>
-          ))}
-        </div>
+          )
+        })}
+      </div>
 
+      {/* ========== 右：操作区 ========== */}
+      <div className="flex items-center gap-2">
+        {/* 面板显隐开关 */}
         <button
           onClick={toggleRightPanel}
-          className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100 transition-all"
+          className="w-9 h-9 flex items-center justify-center rounded-lg transition-all"
+          style={{
+            color: showRightPanel ? 'var(--color-brand)' : 'var(--color-text-muted)',
+            background: showRightPanel ? 'var(--color-brand-light)' : 'transparent',
+          }}
+          title={showRightPanel ? '隐藏面板 (Ctrl+/)' : '显示面板 (Ctrl+/)'}
         >
           {showRightPanel ? <EyeOff size={16} /> : <Eye size={16} />}
         </button>

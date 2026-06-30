@@ -3,14 +3,67 @@
 @tailwind utilities;
 
 :root {
-  --color-bg-primary: #ffffff;
-  --color-bg-secondary: #f8f9fa;
-  --color-bg-tertiary: #f0f1f3;
-  --color-text-primary: #1a1a2e;
-  --color-text-secondary: #6b7280;
-  --color-border: #e5e7eb;
-  --color-brand: #0052d9;
-  --color-brand-light: #e6f1fb;
+  /* 背景体系 */
+  --color-bg: #efebe5;
+  --color-bg-card: #f5f1ec;
+  --color-bg-elevated: #faf8f5;
+  --color-bg-overlay: rgba(239, 235, 229, 0.85);
+  --color-canvas-surface: #e3ded5;
+  --color-canvas-grid: rgba(28, 48, 202, 0.05);
+
+  /* 边框 */
+  --color-border: #d5cfc5;
+  --color-border-light: #e5dfd9;
+  --color-border-strong: #b8b0a5;
+
+  /* 品牌色系 */
+  --color-brand: #1c30ca;
+  --color-brand-light: #e8eafb;
+  --color-brand-mid: #8a94e8;
+  --color-brand-soft: #f5f6fd;
+
+  /* 强调色系 */
+  --color-accent: #9f3330;
+  --color-accent-light: #fdedec;
+  --color-accent-mid: #c96b68;
+
+  /* 危险/删除色系 */
+  --color-urgent: #9f3330;
+  --color-urgent-light: #fdedec;
+  --color-urgent-border: #f1cccc;
+
+  /* 文字 */
+  --color-text-primary: #1a1a24;
+  --color-text-secondary: #565668;
+  --color-text-muted: #9593a4;
+  --color-text-placeholder: #bebcc7;
+
+  /* 圆角 */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.1);
+  --shadow-brand: 0 2px 8px rgba(28, 48, 202, 0.18);
+  --shadow-accent: 0 2px 8px rgba(159, 51, 48, 0.15);
+
+  /* 过渡 */
+  --transition-fast: 120ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-smooth: 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-slow: 350ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* 字重 */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
 }
 
 * {
@@ -20,13 +73,109 @@
 }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   color: var(--color-text-primary);
-  background: var(--color-bg-secondary);
+  background: var(--color-bg);
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
   width: 100vw;
   height: 100vh;
+}
+
+/* ========== 滚动条 ========== */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brand-mid);
+}
+
+/* ========== 颜色选择器 ========== */
+input[type='color'] {
+  -webkit-appearance: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+input[type='color']::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+input[type='color']::-webkit-color-swatch {
+  border: none;
+  border-radius: var(--radius-xs);
+}
+
+/* ========== 选中文字 ========== */
+::selection {
+  background: var(--color-brand-mid);
+  color: #fff;
+}
+
+/* ========== 工具类 ========== */
+@layer utilities {
+  .glass-panel {
+    background: var(--color-bg-overlay);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--color-border-light);
+  }
+
+  .btn-primary {
+    background: var(--color-brand);
+    color: #fff;
+    border-radius: var(--radius-md);
+    font-weight: var(--font-weight-medium);
+    transition: all var(--transition-fast);
+  }
+  .btn-primary:hover {
+    box-shadow: var(--shadow-brand);
+    transform: translateY(-1px);
+  }
+  .btn-primary:active {
+    transform: scale(0.97);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--color-text-secondary);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+  }
+  .btn-ghost:hover {
+    background: var(--color-brand-light);
+    color: var(--color-brand);
+  }
+}
+
+/* ========== 动画关键帧 ========== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--transition-smooth) forwards;
+}
+.animate-slide-in {
+  animation: slideInRight var(--transition-smooth) forwards;
 }

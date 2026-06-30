@@ -34,10 +34,10 @@ export const api = {
       body: JSON.stringify({ prompt, currentDesign }),
     }),
 
-  generateCode: (design: unknown, framework: 'react' | 'vue') =>
+  generateCode: (design: unknown) =>
     request<GeneratedCode>('/code/generate', {
       method: 'POST',
-      body: JSON.stringify({ design, framework }),
+      body: JSON.stringify({ design, framework: 'react' }),
     }),
 
   checkCompliance: (design: unknown, designSystemId?: string | null) =>

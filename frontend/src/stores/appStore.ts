@@ -6,6 +6,7 @@ import type {
   ComplianceReport,
   DesignSystem,
   CanvasElement,
+  AutoFixResult,
 } from '../types'
 import { api } from '../services/api'
 
@@ -25,9 +26,10 @@ interface AppState {
 
   // 合规检查
   compliance: ComplianceReport | null
+  autoFix: AutoFixResult | null
 
   // 面板状态
-  activePanel: 'chat' | 'code' | 'compliance' | 'tokens' | 'design-system' | 'mcp'
+  activePanel: 'chat' | 'code' | 'compliance' | 'design-system' | 'mcp'
   showRightPanel: boolean
 
   // 画布模式
@@ -41,7 +43,7 @@ interface AppState {
   // Actions
   generateDesign: (prompt: string) => Promise<void>
   refineDesign: (prompt: string) => Promise<void>
-  generateCode: (framework: 'react' | 'vue') => Promise<void>
+  generateCode: () => Promise<void>
   checkCompliance: () => Promise<void>
   addChatMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => void
   setActivePanel: (panel: AppState['activePanel']) => void
@@ -54,6 +56,13 @@ interface AppState {
   updateDesignSystem: (id: string, data: Omit<DesignSystem, 'id'>) => Promise<void>
   deleteDesignSystem: (id: string) => Promise<void>
   addCanvasElement: (el: Omit<CanvasElement, 'id'>) => void
+  updateCanvasElement: (id: string, updates: Partial<CanvasElement>) => void
+  deleteCanvasElement: (id: string) => void
+  moveCanvasElement: (id: string, direction: 'front' | 'back' | 'forward' | 'backward') => void
+  clearCanvas: () => void
+  switchToVariant: (index: number) => void
+  selectedElementId: string | null
+  setSelectedElementId: (id: string | null) => void
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -65,12 +74,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   generatedCode: null,
   isLoadingCode: false,
   compliance: null,
+  autoFix: null,
   activePanel: 'chat',
   showRightPanel: true,
   canvasMode: 'design',
   activeDesignSystem: 'brand-design-token-23v1',
   designSystems: [],
   isLoadingDesignSystems: false,
+  selectedElementId: null,
 
   generateDesign: async (prompt: string) => {
     set({ isLoadingDesign: true, isStreaming: true })
@@ -79,15 +90,45 @@ export const useAppStore = create<AppState>((set, get) => ({
         prompt,
         designSystem: get().activeDesignSystem ?? undefined,
       })
+      const alternatives = result.alternatives ?? []
+      const autoFix = result.autoFix ?? null
+      const compliance = result.compliance ?? null
+
       set({
         currentDesign: result.design,
-        designAlternatives: result.alternatives ?? [],
+        designAlternatives: alternatives,
+        compliance,
+        autoFix,
         isLoadingDesign: false,
         isStreaming: false,
       })
+
+      // 构建消息内容
+      const parts: string[] = []
+      parts.push(`已生成设计稿（耗时 ${(result.timeMs / 1000).toFixed(1)}s）`)
+
+      if (autoFix?.fixed) {
+        parts.push(`\n🔧 已自动修正 ${autoFix.fixCount} 处颜色以符合品牌规范`)
+      }
+
+      if (compliance) {
+        const failCount = compliance.checks.filter((c) => !c.passed).length
+        if (failCount > 0) {
+          parts.push(`\n⚠️ 规范检查：${failCount} 项未通过（${compliance.overallScore}分）`)
+        } else {
+          parts.push(`\n✅ 规范检查全部通过（${compliance.overallScore}分）`)
+        }
+      }
+
+      if (alternatives.length > 0) {
+        parts.push(`\n💡 已生成 ${alternatives.length + 1} 个方案变体，可在画布上方切换`)
+      }
+
+      parts.push(`\n${result.suggestions?.join('\n') || ''}`)
+
       get().addChatMessage({
         role: 'assistant',
-        content: `已生成设计稿（耗时 ${(result.timeMs / 1000).toFixed(1)}s）\n\n${result.suggestions?.join('\n') || ''}`,
+        content: parts.join('\n'),
         designData: result.design,
       })
     } catch (err) {
@@ -124,12 +165,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  generateCode: async (framework: 'react' | 'vue') => {
+  generateCode: async () => {
     const design = get().currentDesign
     if (!design) return
     set({ isLoadingCode: true })
     try {
-      const code = await api.generateCode(design, framework)
+      const code = await api.generateCode(design)
       set({ generatedCode: code, isLoadingCode: false })
     } catch (err) {
       set({ isLoadingCode: false })
@@ -226,4 +267,88 @@ export const useAppStore = create<AppState>((set, get) => ({
       })
     }
   },
+
+  updateCanvasElement: (id, updates) => {
+    const current = get().currentDesign
+    if (!current) return
+    set({
+      currentDesign: {
+        ...current,
+        elements: current.elements.map((el) =>
+          el.id === id ? { ...el, ...updates } : el
+        ),
+      },
+    })
+  },
+
+  deleteCanvasElement: (id) => {
+    const current = get().currentDesign
+    if (!current) return
+    if (get().selectedElementId === id) set({ selectedElementId: null })
+    set({
+      currentDesign: {
+        ...current,
+        elements: current.elements.filter((el) => el.id !== id),
+      },
+    })
+  },
+
+  moveCanvasElement: (id, direction) => {
+    const current = get().currentDesign
+    if (!current) return
+    const elements = [...current.elements]
+    const idx = elements.findIndex((e) => e.id === id)
+    if (idx === -1) return
+
+    switch (direction) {
+      case 'front': {
+        if (idx < elements.length - 1) {
+          const [el] = elements.splice(idx, 1)
+          elements.push(el)
+        }
+        break
+      }
+      case 'back': {
+        if (idx > 0) {
+          const [el] = elements.splice(idx, 1)
+          elements.unshift(el)
+        }
+        break
+      }
+      case 'forward': {
+        if (idx < elements.length - 1) {
+          ;[elements[idx], elements[idx + 1]] = [elements[idx + 1], elements[idx]]
+        }
+        break
+      }
+      case 'backward': {
+        if (idx > 0) {
+          ;[elements[idx], elements[idx - 1]] = [elements[idx - 1], elements[idx]]
+        }
+        break
+      }
+    }
+
+    set({ currentDesign: { ...current, elements } })
+  },
+
+  clearCanvas: () => {
+    set({ currentDesign: null, selectedElementId: null })
+  },
+
+  switchToVariant: (index: number) => {
+    const { currentDesign, designAlternatives } = get()
+    if (designAlternatives.length === 0) return
+    // 当前方案压入 alternatives，选中方案取出
+    const allVariants = [currentDesign!, ...designAlternatives]
+    const target = allVariants[index]
+    if (!target) return
+    const newAlternatives = allVariants.filter((_, i) => i !== index)
+    set({
+      currentDesign: target,
+      designAlternatives: newAlternatives,
+    })
+  },
+
+  setSelectedElementId: (id) => set({ selectedElementId: id }),
 }))

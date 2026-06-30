@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Design Tool - 预生成演示稿（备选）</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Inter, system-ui, -apple-system, sans-serif; }
+  .coupon-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+  }
+  .coupon-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(227, 77, 89, 0.2);
+  }
+  .pulse-btn {
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(227, 77, 89, 0.4); }
+    50% { box-shadow: 0 0 0 12px rgba(227, 77, 89, 0); }
+  }
+</style>
+</head>
+<body class="min-h-screen bg-red-50">
+
+  <!-- 顶部导航 -->
+  <header class="bg-white border-b border-red-100 px-8 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-red-500 rounded-lg"></div>
+      <span class="text-lg font-bold text-gray-800">活动中心</span>
+    </div>
+    <nav class="flex gap-6 text-sm text-gray-500">
+      <a href="#" class="text-red-500 font-medium">首页</a>
+      <a href="#" class="hover:text-red-500 transition-colors">我的优惠券</a>
+      <a href="#" class="hover:text-red-500 transition-colors">活动规则</a>
+    </nav>
+  </header>
+
+  <!-- 主 banner -->
+  <section class="bg-gradient-to-r from-red-500 to-red-600 px-8 py-16 text-white text-center">
+    <h1 class="text-4xl font-extrabold mb-4">🎉 年中大促 · 限时福利</h1>
+    <p class="text-red-100 text-lg mb-8">全场满减 + 限量优惠券，手慢无！</p>
+    <div class="flex justify-center gap-4">
+      <span class="bg-white/20 backdrop-blur px-4 py-2 rounded-full text-sm">活动倒计时</span>
+      <span class="font-mono text-2xl font-bold">02 : 14 : 36 : 52</span>
+    </div>
+  </section>
+
+  <!-- 优惠券列表 -->
+  <section class="max-w-5xl mx-auto px-8 py-12">
+    <div class="flex items-center justify-between mb-8">
+      <h2 class="text-2xl font-bold text-gray-800">我的优惠券</h2>
+      <span class="text-sm text-gray-400">共 3 张可用</span>
+    </div>
+
+    <div class="grid grid-cols-3 gap-6">
+      <!-- 券 1 -->
+      <div class="coupon-card bg-white rounded-2xl overflow-hidden border-2 border-dashed border-red-200">
+        <div class="bg-red-50 px-6 py-8 text-center">
+          <span class="text-sm text-red-400 font-medium">满减券</span>
+          <div class="mt-2">
+            <span class="text-5xl font-black text-red-500">50</span>
+            <span class="text-lg text-red-400 ml-1">元</span>
+          </div>
+          <p class="text-sm text-red-300 mt-2">满 299 元可用</p>
+        </div>
+        <div class="px-6 py-4 border-t border-red-100 flex justify-between items-center">
+          <span class="text-xs text-gray-400">有效期至 2026.07.15</span>
+          <button class="pulse-btn bg-red-500 text-white text-sm px-5 py-2 rounded-full font-medium hover:bg-red-600 transition-colors">
+            立即领取
+          </button>
+        </div>
+      </div>
+
+      <!-- 券 2 -->
+      <div class="coupon-card bg-white rounded-2xl overflow-hidden border-2 border-dashed border-red-200">
+        <div class="bg-red-50 px-6 py-8 text-center">
+          <span class="text-sm text-red-400 font-medium">折扣券</span>
+          <div class="mt-2">
+            <span class="text-5xl font-black text-red-500">8.5</span>
+            <span class="text-lg text-red-400 ml-1">折</span>
+          </div>
+          <p class="text-sm text-red-300 mt-2">全场通用</p>
+        </div>
+        <div class="px-6 py-4 border-t border-red-100 flex justify-between items-center">
+          <span class="text-xs text-gray-400">有效期至 2026.07.20</span>
+          <button class="pulse-btn bg-red-500 text-white text-sm px-5 py-2 rounded-full font-medium hover:bg-red-600 transition-colors">
+            立即领取
+          </button>
+        </div>
+      </div>
+
+      <!-- 券 3 -->
+      <div class="coupon-card bg-white rounded-2xl overflow-hidden border-2 border-dashed border-red-200">
+        <div class="bg-red-50 px-6 py-8 text-center">
+          <span class="text-sm text-red-400 font-medium">新人专享</span>
+          <div class="mt-2">
+            <span class="text-5xl font-black text-red-500">100</span>
+            <span class="text-lg text-red-400 ml-1">元</span>
+          </div>
+          <p class="text-sm text-red-300 mt-2">满 599 元可用</p>
+        </div>
+        <div class="px-6 py-4 border-t border-red-100 flex justify-between items-center">
+          <span class="text-xs text-gray-400">有效期至 2026.08.01</span>
+          <button class="pulse-btn bg-red-500 text-white text-sm px-5 py-2 rounded-full font-medium hover:bg-red-600 transition-colors">
+            立即领取
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 底部 -->
+  <footer class="border-t border-red-100 py-6 text-center text-sm text-gray-400">
+    AI Design Tool 演示 · Prompt: "设计一个电商活动优惠券领取页面，红色调，圆角风格"
+  </footer>
+</body>
+</html>

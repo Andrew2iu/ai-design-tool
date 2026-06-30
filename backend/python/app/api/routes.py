@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Body
 from pydantic import BaseModel
-from app.services.ai_service import generate_design_json, refine_design, generate_suggestions
+import time
+from app.services.ai_service import generate_design_variants, refine_design, generate_suggestions
 from app.services.design_service import (
     check_design_compliance,
     get_design_systems,
@@ -47,7 +48,6 @@ class DesignSystemUpdate(BaseModel):
 
 class CodeGenRequest(BaseModel):
     design: dict
-    framework: str = "react"
 
 
 # ---------- AI 设计生成 ----------
@@ -55,15 +55,25 @@ class CodeGenRequest(BaseModel):
 @router.post("/ai/generate")
 async def generate_design(req: GenerateRequest):
     try:
-        result = generate_design_json(req.prompt, req.designSystem)
-        design = result["design"]
-        suggestions = generate_suggestions(design)
+        result = generate_design_variants(req.prompt, req.designSystem)
+
+        compliance_response = None
+        if result.get("compliance"):
+            c = result["compliance"]
+            compliance_response = {
+                "overallScore": c["overall_score"],
+                "checks": c["checks"],
+                "timestamp": int(time.time() * 1000),
+            }
 
         return {
-            "design": design,
-            "suggestions": suggestions,
+            "design": result["design"],
+            "alternatives": result.get("alternatives", []),
+            "suggestions": result.get("suggestions", []),
+            "compliance": compliance_response,
+            "autoFix": result.get("autoFix"),
             "tokens": result.get("tokens", 0),
-            "timeMs": result.get("time_ms", 0),
+            "timeMs": result.get("timeMs", 0),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -89,7 +99,7 @@ async def refine_design_endpoint(req: RefineRequest):
 async def generate_code(req: CodeGenRequest):
     from app.services.codegen_service import generate_code
     try:
-        result = generate_code(req.design, req.framework)
+        result = generate_code(req.design, "react")
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

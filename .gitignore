@@ -11,5 +11,7 @@ env/
 *.db
 .workbuddy/
 .codebuddy/
+~$*
+backend/python/venv/
 nul
 

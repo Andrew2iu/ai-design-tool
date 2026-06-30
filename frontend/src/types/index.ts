@@ -28,6 +28,7 @@ export interface CanvasElement {
   fill?: string
   stroke?: string
   strokeWidth?: number
+  strokeDasharray?: string  // ★ 虚线边框样式，如 "6,3"
   rx?: number
   ry?: number
   text?: string
@@ -39,6 +40,8 @@ export interface CanvasElement {
   angle?: number
   scaleX?: number
   scaleY?: number
+  shadow?: string  // ★ CSS box-shadow 字符串
+  placeholder?: string  // ★ 输入框占位文字
   children?: CanvasElement[]
   componentType?: string
   props?: Record<string, unknown>
@@ -50,6 +53,13 @@ export interface DesignCanvasData {
   height: number
   elements: CanvasElement[]
   designSystem?: DesignSystem
+}
+
+export interface AutoFixResult {
+  fixed: boolean
+  fixCount?: number
+  fixes?: { elementId: string; elementType: string; field: string; from: string; to: string }[]
+  message?: string
 }
 
 export interface AIDesignRequest {
@@ -66,6 +76,8 @@ export interface AIDesignResponse {
   design: DesignCanvasData
   alternatives?: DesignCanvasData[]
   suggestions?: string[]
+  compliance?: ComplianceReport | null
+  autoFix?: AutoFixResult | null
   tokens: number
   timeMs: number
 }
@@ -78,11 +90,26 @@ export interface ChatMessage {
   designData?: DesignCanvasData
 }
 
+export interface CodeCheckDimension {
+  category: string
+  score: number
+  maxScore: number
+  details: string
+  passed: boolean
+}
+
+export interface CodeCheckReport {
+  overallScore: number
+  dimensions: CodeCheckDimension[]
+  suggestions: string[]
+  timestamp: number
+}
+
 export interface GeneratedCode {
   react?: string
-  vue?: string
   css?: string
   timestamp: number
+  selfCheck?: CodeCheckReport
 }
 
 export interface ComplianceReport {

@@ -11,19 +11,33 @@ export default function CollaborationIndicator() {
       setConnected(conn)
       setOnlineCount(count)
     })
-    collabService.connect()
-    return () => collabService.disconnect()
+    // 避免重复连接：仅在服务未连接时发起
+    if (!(collabService as any).isConnected?.()) {
+      collabService.connect()
+    }
+    return () => {
+      collabService.disconnect()
+    }
   }, [])
 
+  const displayCount = Math.max(onlineCount, connected ? 1 : 0)
+
   return (
-    <div className="flex items-center gap-2 px-2.5 py-1 bg-gray-50 rounded-lg text-xs text-gray-500">
+    <div
+      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs"
+      style={{
+        background: 'var(--color-bg)',
+        border: '1px solid var(--color-border-light)',
+        color: 'var(--color-text-muted)',
+      }}
+    >
       {connected ? (
-        <Wifi size={12} className="text-green-500" />
+        <Wifi size={11} style={{ color: '#16a34a' }} />
       ) : (
-        <WifiOff size={12} className="text-gray-400" />
+        <WifiOff size={11} style={{ color: 'var(--color-text-muted)' }} />
       )}
-      <Users size={12} />
-      <span>{Math.max(onlineCount, connected ? 1 : 0)}</span>
+      <Users size={11} />
+      <span>{displayCount}</span>
     </div>
   )
 }
