@@ -16,9 +16,6 @@ export default function ChatPanel() {
     generateCode,
     checkCompliance,
     setActivePanel,
-    showRightPanel,
-    toggleRightPanel,
-    setCanvasMode,
   } = useAppStore()
 
   useEffect(() => {
@@ -63,11 +60,6 @@ export default function ChatPanel() {
       e.preventDefault()
       handleSend()
     }
-  }
-
-  const handleViewDesign = () => {
-    if (!showRightPanel) toggleRightPanel()
-    setCanvasMode('design')
   }
 
   return (
@@ -170,19 +162,6 @@ export default function ChatPanel() {
               }
             >
               <p className="whitespace-pre-wrap">{msg.content}</p>
-              {msg.designData && (
-                <button
-                  onClick={handleViewDesign}
-                  className="mt-2.5 text-[11px] px-3 py-1.5 rounded-full transition-all font-medium flex items-center gap-1.5"
-                  style={{
-                    background: 'var(--color-brand-light)',
-                    color: 'var(--color-brand)',
-                  }}
-                >
-                  <EyeIcon size={12} />
-                  查看设计稿
-                </button>
-              )}
             </div>
           </div>
         ))}
@@ -315,15 +294,6 @@ export default function ChatPanel() {
         </div>
       </div>
     </div>
-  )
-}
-
-function EyeIcon({ size }: { size: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
   )
 }
 

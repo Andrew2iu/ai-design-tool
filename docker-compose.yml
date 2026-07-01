@@ -15,8 +15,28 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+      ollama:
+        condition: service_started
     volumes:
       - ./backend/python:/app
+
+  # ---- Ollama 本地推理（本地化保障数据安全） ----
+  # 启动后需手动拉取模型: docker exec ollama ollama pull deepseek-r1
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # GPU 支持（如有 NVIDIA 显卡，取消下面注释）
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
 
   # ---- MCP 服务 ----
   # MCP Server 现在以 HTTP/SSE 模式运行，暴露 /sse 和 /messages 端点。
@@ -78,3 +98,4 @@ services:
 volumes:
   pgdata:
   miniodata:
+  ollama_data:

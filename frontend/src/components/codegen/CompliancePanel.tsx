@@ -148,18 +148,6 @@ export default function CompliancePanel() {
           })}
         </div>
 
-        {/* 重新检查 */}
-        <button
-          onClick={checkCompliance}
-          className="w-full py-2 text-xs rounded-xl font-medium transition-all"
-          style={{
-            background: 'var(--color-bg)',
-            border: '1px solid var(--color-border)',
-            color: 'var(--color-text-secondary)',
-          }}
-        >
-          重新检查
-        </button>
       </div>
     </div>
   )

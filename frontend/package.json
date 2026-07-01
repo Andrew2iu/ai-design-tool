@@ -9,12 +9,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "clsx": "^2.1.1",
     "fabric": "^6.9.0",
+    "lucide-react": "^0.468.0",
+    "mdui": "^2.1.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "zustand": "^5.0.0",
-    "clsx": "^2.1.1",
-    "lucide-react": "^0.468.0"
+    "zustand": "^5.0.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

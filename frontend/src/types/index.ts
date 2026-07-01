@@ -122,3 +122,15 @@ export interface ComplianceReport {
   }[]
   timestamp: number
 }
+
+export interface AIProvider {
+  id: string
+  name: string
+  model: string
+  description: string
+}
+
+export interface AIProvidersResponse {
+  current: string
+  available: AIProvider[]
+}

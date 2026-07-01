@@ -1,14 +1,14 @@
 """
 AI 编排服务 —— 自然语言到设计稿的核心引擎
 
-v4.0: 多方案并行生成 + 自动合规检查 + 自动颜色修正
+v5.0: 多模型动态切换（Ollama本地 / DeepSeek云端 / OpenAI GPT） + 多方案并行生成 + 自动合规检查 + 自动颜色修正
 """
 import json
 import time
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from openai import OpenAI
-from app.core.config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL
+from app.core.config import get_ai_client
 from app.services.design_service import get_design_system, check_design_compliance, auto_fix_colors
 from app.services.prompt_builder import (
     DesignConstraints,
@@ -18,13 +18,10 @@ from app.services.prompt_builder import (
     validate_and_fix_colors,
 )
 
-_client = None
-
-def _get_client() -> OpenAI:
-    global _client
-    if _client is None:
-        _client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
-    return _client
+# 动态获取 AI 客户端 — 支持 Ollama / DeepSeek / OpenAI 多模型切换
+def _get_client() -> tuple[OpenAI, str]:
+    client, model = get_ai_client()
+    return client, model
 
 
 def generate_design_json(prompt: str, design_system: str | None = None) -> dict:
@@ -72,8 +69,9 @@ def generate_design_json(prompt: str, design_system: str | None = None) -> dict:
     user_msg = build_enhanced_user_prompt(prompt, constraints)
 
     try:
-        response = _get_client().chat.completions.create(
-            model=DEEPSEEK_MODEL,
+        client, model = _get_client()
+        response = client.chat.completions.create(
+            model=model,
             messages=[
                 {"role": "system", "content": system_msg},
                 {"role": "user", "content": user_msg},
@@ -178,8 +176,9 @@ def _generate_single_variant(
         # 在 user prompt 末尾追加风格引导
         styled_user_msg = user_msg + f"\n\n【风格方向 #{variant_index + 1}：{variant_style['label']}】{variant_style['hint']}"
 
-        response = _get_client().chat.completions.create(
-            model=DEEPSEEK_MODEL,
+        client, model = _get_client()
+        response = client.chat.completions.create(
+            model=model,
             messages=[
                 {"role": "system", "content": system_msg},
                 {"role": "user", "content": styled_user_msg},
@@ -394,8 +393,9 @@ def refine_design(prompt: str, current_design: dict) -> dict:
     enhanced_prompt = build_enhanced_user_prompt(prompt, constraints)
 
     try:
-        response = _get_client().chat.completions.create(
-            model=DEEPSEEK_MODEL,
+        client, model = _get_client()
+        response = client.chat.completions.create(
+            model=model,
             messages=[
                 {
                     "role": "system",
@@ -449,8 +449,9 @@ def refine_design(prompt: str, current_design: dict) -> dict:
 def generate_suggestions(design: dict) -> list[str]:
     """根据设计稿生成优化建议"""
     try:
-        response = _get_client().chat.completions.create(
-            model=DEEPSEEK_MODEL,
+        client, model = _get_client()
+        response = client.chat.completions.create(
+            model=model,
             messages=[
                 {
                     "role": "system",

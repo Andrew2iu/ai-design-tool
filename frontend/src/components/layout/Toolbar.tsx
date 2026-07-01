@@ -1,6 +1,7 @@
-import { Palette, Eye, EyeOff, Layers, Code, ShieldCheck, Database, Cpu, Sparkles, LayoutGrid } from 'lucide-react'
+import { Palette, Eye, EyeOff, Layers, Code, ShieldCheck, Database, Cpu, Sparkles, LayoutGrid, Bot, ChevronDown } from 'lucide-react'
 import { useAppStore } from '../../stores/appStore'
 import CollaborationIndicator from '../collaboration/CollaborationIndicator'
+import { useState, useEffect, useRef } from 'react'
 
 interface TabItem {
   key: 'chat' | 'code' | 'compliance' | 'design-system' | 'mcp'
@@ -28,7 +29,31 @@ export default function Toolbar() {
     setActivePanel,
     designAlternatives,
     switchToVariant,
+    aiProviders,
+    currentProvider,
+    isLoadingProviders,
+    loadAIProviders,
+    switchAIProvider,
   } = useAppStore()
+
+  const [providerMenuOpen, setProviderMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    loadAIProviders()
+  }, [])
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setProviderMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const providerLabel = aiProviders.find(p => p.id === currentProvider)?.name || currentProvider
 
   const totalVariants = designAlternatives.length + (currentDesign ? 1 : 0)
 
@@ -184,6 +209,75 @@ export default function Toolbar() {
 
       {/* ========== 右：操作区 ========== */}
       <div className="flex items-center gap-2">
+        {/* AI 模型切换 */}
+        <div ref={menuRef} className="relative">
+          <button
+            onClick={() => setProviderMenuOpen(!providerMenuOpen)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg transition-all font-medium"
+            style={{
+              background: providerMenuOpen ? 'var(--color-brand-light)' : 'var(--color-bg)',
+              color: currentProvider === 'ollama' ? '#16a34a' : currentProvider === 'openai' ? '#7c3aed' : 'var(--color-brand)',
+              border: '1px solid var(--color-border-light)',
+            }}
+          >
+            <Bot size={14} />
+            <span>{providerLabel}</span>
+            <ChevronDown size={12} style={{ opacity: 0.6 }} />
+          </button>
+
+          {providerMenuOpen && (
+            <div
+              className="absolute top-full right-0 mt-1.5 w-52 rounded-xl overflow-hidden z-50"
+              style={{
+                background: 'var(--color-bg-elevated)',
+                border: '1px solid var(--color-border)',
+                boxShadow: 'var(--shadow-lg)',
+              }}
+            >
+              {isLoadingProviders ? (
+                <div className="px-3 py-2.5 text-xs" style={{ color: 'var(--color-text-muted)' }}>加载中...</div>
+              ) : (
+                aiProviders.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      switchAIProvider(p.id)
+                      setProviderMenuOpen(false)
+                    }}
+                    className="w-full flex items-start gap-2 px-3 py-2.5 text-left transition-all"
+                    style={{
+                      background: p.id === currentProvider ? 'var(--color-brand-light)' : 'transparent',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (p.id !== currentProvider) e.currentTarget.style.background = 'var(--color-bg)'
+                    }}
+                    onMouseLeave={(e) => {
+                      if (p.id !== currentProvider) e.currentTarget.style.background = 'transparent'
+                    }}
+                  >
+                    <div
+                      className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
+                      style={{
+                        background: p.id === currentProvider
+                          ? 'var(--color-brand)'
+                          : p.id === 'ollama' ? '#16a34a' : p.id === 'openai' ? '#7c3aed' : 'var(--color-text-muted)',
+                      }}
+                    />
+                    <div className="flex flex-col leading-tight">
+                      <span className="text-xs font-semibold" style={{ color: p.id === currentProvider ? 'var(--color-brand)' : 'var(--color-text-primary)' }}>
+                        {p.name}
+                      </span>
+                      <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                        {p.model} · {p.description}
+                      </span>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
         {/* 面板显隐开关 */}
         <button
           onClick={toggleRightPanel}

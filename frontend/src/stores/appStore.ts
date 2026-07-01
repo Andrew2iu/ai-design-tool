@@ -7,6 +7,7 @@ import type {
   DesignSystem,
   CanvasElement,
   AutoFixResult,
+  AIProvider,
 } from '../types'
 import { api } from '../services/api'
 
@@ -40,6 +41,11 @@ interface AppState {
   designSystems: { id: string; name: string; builtIn: boolean }[]
   isLoadingDesignSystems: boolean
 
+  // AI 提供商
+  aiProviders: AIProvider[]
+  currentProvider: string
+  isLoadingProviders: boolean
+
   // Actions
   generateDesign: (prompt: string) => Promise<void>
   refineDesign: (prompt: string) => Promise<void>
@@ -61,6 +67,8 @@ interface AppState {
   moveCanvasElement: (id: string, direction: 'front' | 'back' | 'forward' | 'backward') => void
   clearCanvas: () => void
   switchToVariant: (index: number) => void
+  loadAIProviders: () => Promise<void>
+  switchAIProvider: (providerId: string) => Promise<void>
   selectedElementId: string | null
   setSelectedElementId: (id: string | null) => void
 }
@@ -78,10 +86,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   activePanel: 'chat',
   showRightPanel: true,
   canvasMode: 'design',
-  activeDesignSystem: 'brand-design-token-23v1',
+  activeDesignSystem: 'mdui-material-3',
   designSystems: [],
   isLoadingDesignSystems: false,
   selectedElementId: null,
+  aiProviders: [],
+  currentProvider: 'deepseek',
+  isLoadingProviders: false,
 
   generateDesign: async (prompt: string) => {
     set({ isLoadingDesign: true, isStreaming: true })
@@ -239,7 +250,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     await api.deleteDesignSystem(id)
     await get().loadDesignSystems()
     if (get().activeDesignSystem === id) {
-      set({ activeDesignSystem: 'brand-design-token-23v1' })
+      set({ activeDesignSystem: 'mdui-material-3' })
     }
   },
 
@@ -351,4 +362,40 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setSelectedElementId: (id) => set({ selectedElementId: id }),
+
+  loadAIProviders: async () => {
+    set({ isLoadingProviders: true })
+    try {
+      const result = await api.getAIProviders()
+      set({
+        aiProviders: result.available,
+        currentProvider: result.current,
+        isLoadingProviders: false,
+      })
+    } catch {
+      set({ isLoadingProviders: false })
+    }
+  },
+
+  switchAIProvider: async (providerId: string) => {
+    set({ isLoadingProviders: true })
+    try {
+      const result = await api.switchAIProvider(providerId)
+      set({
+        currentProvider: result.current,
+        aiProviders: result.available,
+        isLoadingProviders: false,
+      })
+      get().addChatMessage({
+        role: 'system',
+        content: `已切换AI模型为: ${result.current === 'ollama' ? 'Ollama 本地（数据安全）' : result.current === 'openai' ? 'OpenAI GPT' : 'DeepSeek 云端'}`,
+      })
+    } catch (err) {
+      set({ isLoadingProviders: false })
+      get().addChatMessage({
+        role: 'system',
+        content: `切换模型失败: ${(err as Error).message}`,
+      })
+    }
+  },
 }))

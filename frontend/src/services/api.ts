@@ -1,6 +1,7 @@
 import type {
   AIDesignRequest,
   AIDesignResponse,
+  AIProvidersResponse,
   ChatMessage,
   GeneratedCode,
   ComplianceReport,
@@ -74,4 +75,13 @@ export const api = {
 
   healthCheck: () =>
     request<{ status: string; version: string }>('/health'),
+
+  getAIProviders: () =>
+    request<AIProvidersResponse>('/ai/providers'),
+
+  switchAIProvider: (providerId: string) =>
+    request<{ current: string; available: AIProvidersResponse['available'] }>('/ai/providers', {
+      method: 'PUT',
+      body: JSON.stringify({ provider: providerId }),
+    }),
 }

@@ -1,18 +1,16 @@
 """
 设计规范约束检查服务
+支持多模型动态切换（Ollama本地 / DeepSeek云端 / OpenAI GPT）
 """
 import json
 import re
 from openai import OpenAI
-from app.core.config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL
+from app.core.config import get_ai_client
 
-_client = None
-
-def _get_client() -> OpenAI:
-    global _client
-    if _client is None:
-        _client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
-    return _client
+# 动态获取 AI 客户端
+def _get_client() -> tuple[OpenAI, str]:
+    client, model = get_ai_client()
+    return client, model
 
 
 # ── 颜色距离计算（RGB 欧几里得距离） ──
@@ -127,26 +125,57 @@ def auto_fix_colors(design: dict, design_system_id: str | None = None) -> tuple[
 
     return design, fix_log
 
-# 内置设计系统
+# 内置设计系统（仅 MDUI Material Design 3 企业设计系统 SDK）
 BUILTIN_DESIGN_SYSTEMS = {
-    "brand-design-token-23v1": {
-        "name": "默认品牌设计系统 v23",
+    # ── MDUI Material Design 3 企业设计系统 SDK ──
+    # 基于 MDUI 组件库的设计规范，提供完整的 MD3 Design Token
+    "mdui-material-3": {
+        "name": "MDUI Material Design 3",
+        "source": "mdui",
+        "description": "基于 MDUI 企业设计系统 SDK 的 Material Design 3 规范预设",
         "colors": {
-            "primary": "#0052D9",
-            "secondary": "#7C4DFF",
-            "success": "#00A870",
-            "warning": "#ED7B2F",
-            "danger": "#E34D59",
-            "background": "#F5F5F5",
-            "surface": "#FFFFFF",
+            "primary": "#6750A4",           # MD3 Primary
+            "on-primary": "#FFFFFF",        # MD3 On Primary
+            "primary-container": "#EADDFF", # MD3 Primary Container
+            "secondary": "#625B71",         # MD3 Secondary
+            "tertiary": "#7D5260",          # MD3 Tertiary
+            "error": "#B3261E",             # MD3 Error
+            "background": "#FFFBFE",        # MD3 Background
+            "surface": "#FFFBFE",           # MD3 Surface
+            "surface-variant": "#E7E0EC",   # MD3 Surface Variant
+            "outline": "#79747E",           # MD3 Outline
         },
         "typography": {
-            "heading": {"font": "Inter", "weight": 600, "size": "24px"},
-            "body": {"font": "Inter", "weight": 400, "size": "14px"},
+            "heading": {"font": "Roboto", "weight": 500, "size": "22px"},
+            "body": {"font": "Roboto", "weight": 400, "size": "14px"},
         },
-        "spacing": 8,
-        "borderRadius": 8,
-    }
+        "spacing": 8,        # MD3 基础间距单位 8dp
+        "borderRadius": 12,  # MD3 默认圆角 12dp
+        "mduiTokens": {
+            # MDUI / MD3 完整 Design Token 映射
+            "md-sys-color-primary": "#6750A4",
+            "md-sys-color-on-primary": "#FFFFFF",
+            "md-sys-color-primary-container": "#EADDFF",
+            "md-sys-color-on-primary-container": "#21005D",
+            "md-sys-color-secondary": "#625B71",
+            "md-sys-color-on-secondary": "#FFFFFF",
+            "md-sys-color-secondary-container": "#E8DEF8",
+            "md-sys-color-on-secondary-container": "#1D192B",
+            "md-sys-color-tertiary": "#7D5260",
+            "md-sys-color-on-tertiary": "#FFFFFF",
+            "md-sys-color-tertiary-container": "#FFD8E4",
+            "md-sys-color-error": "#B3261E",
+            "md-sys-color-on-error": "#FFFFFF",
+            "md-sys-color-error-container": "#F9DEDC",
+            "md-sys-color-background": "#FFFBFE",
+            "md-sys-color-surface": "#FFFBFE",
+            "md-sys-color-surface-variant": "#E7E0EC",
+            "md-sys-color-outline": "#79747E",
+            "md-sys-typescale-headline-font": "Roboto",
+            "md-sys-typescale-body-font": "Roboto",
+            "md-sys-shape-corner-medium-radius": "12dp",
+        },
+    },
 }
 
 
@@ -280,8 +309,9 @@ def check_design_compliance(design: dict, design_system_id: str | None = None) -
 
 def _ai_semantic_check(design: dict, design_system: dict) -> dict:
     """使用 AI 进行语义层面的设计规范检查"""
-    response = _get_client().chat.completions.create(
-        model=DEEPSEEK_MODEL,
+    client, model = _get_client()
+    response = client.chat.completions.create(
+        model=model,
         messages=[
             {
                 "role": "system",
@@ -318,33 +348,38 @@ CUSTOM_DESIGN_SYSTEMS: dict[str, dict] = {}
 
 
 def _normalize_design_system(data: dict) -> dict:
-    """确保设计系统数据结构完整"""
+    """确保设计系统数据结构完整（含 source 来源标识）"""
     return {
         "name": data.get("name", "未命名设计系统"),
+        "source": data.get("source", "mdui"),  # 来源: custom / mdui / material-3
+        "description": data.get("description", ""),
         "colors": data.get("colors", {
-            "primary": "#0052D9",
-            "secondary": "#7C4DFF",
-            "success": "#00A870",
-            "warning": "#ED7B2F",
-            "danger": "#E34D59",
-            "background": "#F5F5F5",
-            "surface": "#FFFFFF",
+            "primary": "#6750A4",
+            "on-primary": "#FFFFFF",
+            "primary-container": "#EADDFF",
+            "secondary": "#625B71",
+            "tertiary": "#7D5260",
+            "error": "#B3261E",
+            "background": "#FFFBFE",
+            "surface": "#FFFBFE",
+            "surface-variant": "#E7E0EC",
+            "outline": "#79747E",
         }),
         "typography": data.get("typography", {
-            "heading": {"font": "Inter", "weight": 600, "size": "24px"},
-            "body": {"font": "Inter", "weight": 400, "size": "14px"},
+            "heading": {"font": "Roboto", "weight": 500, "size": "22px"},
+            "body": {"font": "Roboto", "weight": 400, "size": "14px"},
         }),
         "spacing": int(data.get("spacing", 8)),
-        "borderRadius": int(data.get("borderRadius", 8)),
+        "borderRadius": int(data.get("borderRadius", 12)),
     }
 
 
 def get_design_system(design_system_id: str | None) -> dict:
-    """获取完整设计系统，优先返回自定义，其次内置"""
+    """获取完整设计系统，优先返回自定义，其次内置，默认 MDUI"""
     if not design_system_id:
-        design_system_id = "brand-design-token-23v1"
+        design_system_id = "mdui-material-3"
     return CUSTOM_DESIGN_SYSTEMS.get(design_system_id) or BUILTIN_DESIGN_SYSTEMS.get(
-        design_system_id, BUILTIN_DESIGN_SYSTEMS["brand-design-token-23v1"]
+        design_system_id, BUILTIN_DESIGN_SYSTEMS["mdui-material-3"]
     )
 
 
@@ -373,13 +408,13 @@ def delete_design_system(design_system_id: str) -> bool:
 
 
 def get_design_systems() -> list[dict]:
-    """列出所有设计系统（内置 + 自定义）"""
+    """列出所有设计系统（内置 + 自定义），含来源标识"""
     systems = [
-        {"id": k, "name": v["name"], "builtIn": True}
+        {"id": k, "name": v["name"], "source": v.get("source", "custom"), "builtIn": True}
         for k, v in BUILTIN_DESIGN_SYSTEMS.items()
     ]
     systems += [
-        {"id": k, "name": v["name"], "builtIn": False}
+        {"id": k, "name": v["name"], "source": v.get("source", "custom"), "builtIn": False}
         for k, v in CUSTOM_DESIGN_SYSTEMS.items()
     ]
     return systems

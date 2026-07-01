@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Copy, Check, Code2, FileText, Loader2, ShieldCheck, ShieldAlert, ShieldX, ChevronDown, ChevronRight } from 'lucide-react'
+import { Copy, Check, Code2, FileText, Loader2, ShieldCheck, ShieldAlert, ShieldX, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
 import { useAppStore } from '../../stores/appStore'
 import type { CodeCheckReport } from '../../types'
 
@@ -152,6 +152,19 @@ export default function CodePanel() {
           代码生成
         </h3>
         <div className="flex items-center gap-2">
+          {/* 重新生成按钮 */}
+          <button
+            onClick={() => generateCode()}
+            disabled={isLoadingCode}
+            className="flex items-center gap-1 text-xs transition-all rounded-md px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed hover:scale-105"
+            style={{ color: isLoadingCode ? 'var(--color-brand)' : 'var(--color-text-muted)', background: isLoadingCode ? 'var(--color-brand-light)' : 'var(--color-bg)' }}
+            onMouseEnter={(e) => { if (!isLoadingCode) { e.currentTarget.style.color = 'var(--color-brand)'; e.currentTarget.style.background = 'var(--color-brand-soft)' } }}
+            onMouseLeave={(e) => { if (!isLoadingCode) { e.currentTarget.style.color = 'var(--color-text-muted)'; e.currentTarget.style.background = 'var(--color-bg)' } }}
+            title="重新生成代码"
+          >
+            {isLoadingCode ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+            <span>{isLoadingCode ? '生成中...' : '重新生成'}</span>
+          </button>
           {selfCheck && (
             <span
               className="px-1.5 py-0.5 text-[10px] font-bold rounded"
@@ -207,7 +220,6 @@ export default function CodePanel() {
               {copied ? '已复制' : '复制'}
             </button>
           </div>
-
           {/* 自检报告 */}
           {selfCheck && <SelfCheckReport report={selfCheck} />}
 

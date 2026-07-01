@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Body
 from pydantic import BaseModel
 import time
+from app.core.config import get_ai_provider_info, set_ai_provider
 from app.services.ai_service import generate_design_variants, refine_design, generate_suggestions
 from app.services.design_service import (
     check_design_compliance,
@@ -12,6 +13,28 @@ from app.services.design_service import (
 )
 
 router = APIRouter(prefix="/api")
+
+
+# ---------- AI 提供商信息 ----------
+
+@router.get("/ai/providers")
+async def list_ai_providers():
+    """列出可用的AI模型提供商及当前选择"""
+    return get_ai_provider_info()
+
+
+class SwitchProviderRequest(BaseModel):
+    provider: str
+
+
+@router.put("/ai/providers")
+async def switch_ai_provider(req: SwitchProviderRequest):
+    """切换AI模型提供商"""
+    try:
+        new_provider = set_ai_provider(req.provider)
+        return {"current": new_provider, "available": get_ai_provider_info()["available"]}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 class GenerateRequest(BaseModel):
@@ -57,6 +80,9 @@ async def generate_design(req: GenerateRequest):
     try:
         result = generate_design_variants(req.prompt, req.designSystem)
 
+        # 自动更新画布状态，供 MCP Server 获取真实数据
+        _canvas_store["design"] = result["design"]
+
         compliance_response = None
         if result.get("compliance"):
             c = result["compliance"]
@@ -83,6 +109,10 @@ async def generate_design(req: GenerateRequest):
 async def refine_design_endpoint(req: RefineRequest):
     try:
         result = refine_design(req.prompt, req.currentDesign)
+
+        # 自动更新画布状态
+        _canvas_store["design"] = result["design"]
+
         return {
             "design": result["design"],
             "suggestions": [],
@@ -165,3 +195,28 @@ async def get_chat_history():
 @router.get("/health")
 async def health_check():
     return {"status": "ok", "version": "1.0.0"}
+
+
+# ---------- 画布状态（供 MCP Server 获取真实数据） ----------
+
+# 运行时存储最新设计稿，MCP Server 通过 HTTP 请求获取
+# 用字典包装避免 global 变量重载问题
+_canvas_store: dict = {"design": {}}
+
+
+@router.get("/design/current-state")
+async def get_current_design_state():
+    """获取当前设计画布的最新状态（MCP Server 使用此端点获取真实数据）"""
+    if not _canvas_store["design"]:
+        # 如果没有最新设计稿，返回默认模板
+        from app.services.ai_service import _generate_fallback_design
+        from app.services.prompt_builder import DesignConstraints
+        _canvas_store["design"] = _generate_fallback_design("默认设计稿", DesignConstraints())
+    return {"design": _canvas_store["design"]}
+
+
+@router.put("/design/current-state")
+async def update_current_design_state(design: dict = Body(...)):
+    """更新当前设计画布状态（前端每次生成/编辑设计稿后调用）"""
+    _canvas_store["design"] = design
+    return {"success": True, "elementCount": len(design.get("elements", []))}

@@ -121,6 +121,14 @@ export default function DesignCanvas() {
       c.backgroundColor = '#ffffff'
       const fabricJson = convertDesignToFabric(currentDesign)
       c.loadFromJSON(fabricJson as unknown as Record<string, unknown>).then(() => {
+        // 预览模式下锁定所有元素
+        if (canvasMode === 'preview') {
+          c.getObjects().forEach((obj) => {
+            obj.set({ selectable: false, evented: false, hasControls: false, lockMovementX: true, lockMovementY: true })
+          })
+          c.selection = false
+          c.discardActiveObject()
+        }
         c.renderAll()
         const scale = calcScale()
         setZoom(scale)
@@ -156,6 +164,10 @@ export default function DesignCanvas() {
     for (const el of added) {
       const fabricObj = createFabricElement(el)
       if (fabricObj) {
+        // 预览模式下锁定新元素
+        if (canvasMode === 'preview') {
+          fabricObj.set({ selectable: false, evented: false, hasControls: false, lockMovementX: true, lockMovementY: true })
+        }
         c.add(fabricObj)
       }
     }
@@ -184,7 +196,29 @@ export default function DesignCanvas() {
     prevElementsRef.current = [...currEls]
   }, [currentDesign])
 
-  // ========== 增量更新选中元素 ==========
+  // ========== 预览模式：禁止拖动/选中/缩放元素 ==========
+  useEffect(() => {
+    const c = fabricRef.current
+    if (!c) return
+
+    const isPreview = canvasMode === 'preview'
+    c.selection = !isPreview // 预览模式禁止框选
+
+    c.getObjects().forEach((obj) => {
+      obj.set({
+        selectable: !isPreview,
+        evented: !isPreview,
+        hasControls: !isPreview,
+        lockMovementX: isPreview,
+        lockMovementY: isPreview,
+      })
+    })
+
+    if (isPreview) {
+      c.discardActiveObject()
+    }
+    c.renderAll()
+  }, [canvasMode])
   useEffect(() => {
     const c = fabricRef.current
     if (!c || !currentDesign || !selectedElementId) return
